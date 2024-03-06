@@ -1,0 +1,123 @@
+Tests(test de la fonction computeHarrisValues()) F
+======================================================================
+FAIL: test_todo1 (__main__.TestFeatures)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/lib64/python3.8/unittest/mock.py", line 1325, in patched
+    return func(*newargs, **newkeywargs)
+  File "/task/student/test_todo1.py", line 154, in test_todo1
+    self.assertTrue(res == 0, 'computeHarrisValues() retourne des valeurs incorrectes !')
+AssertionError: False is not true : computeHarrisValues() retourne des valeurs incorrectes !
+
+----------------------------------------------------------------------
+Ran 1 test in 22.245s
+
+FAILED (failures=1)
+
+
+Tests(test de la fonction computeLocalMaxima()) /task/student/features.py:207: DeprecationWarning: Please use `maximum_filter` from the `scipy.ndimage` namespace, the `scipy.ndimage.filters` namespace is deprecated.
+  local_maxima = harrisImage == scipy.ndimage.filters.maximum_filter(harrisImage, footprint=np.ones((neighborhood_size, neighborhood_size)))
+F
+======================================================================
+FAIL: test_todo2 (__main__.TestFeatures)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/task/student/test_todo2.py", line 147, in test_todo2
+    self.assertTrue(res == 0, 'La fonction computeLocalMaxima() retourne des valeurs incorrectes !')
+AssertionError: False is not true : La fonction computeLocalMaxima() retourne des valeurs incorrectes !
+
+----------------------------------------------------------------------
+Ran 1 test in 0.127s
+
+FAILED (failures=1)
+
+
+Tests (test de la fonction detectKeypoints()) - Votre code a passé les tests :)
+
+Tests(test de la fonction describeFeatures() - version simple) F
+======================================================================
+FAIL: test_todo4 (__main__.TestFeatures)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/lib64/python3.8/unittest/mock.py", line 1325, in patched
+    return func(*newargs, **newkeywargs)
+  File "/task/student/test_todo4.py", line 130, in test_todo4
+    self.assertTrue(res == 0, 'La fonction describeFeatures() retourne des valeurs incorrectes !')
+AssertionError: False is not true : La fonction describeFeatures() retourne des valeurs incorrectes !
+
+----------------------------------------------------------------------
+Ran 1 test in 0.080s
+
+FAILED (failures=1)
+
+
+Tests(test de la fonction describeFeatures() - version MOPS) F
+======================================================================
+FAIL: test_todo5et6 (__main__.TestFeatures)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/lib64/python3.8/unittest/mock.py", line 1325, in patched
+    return func(*newargs, **newkeywargs)
+  File "/task/student/test_todo5et6.py", line 129, in test_todo5et6
+    self.assertTrue(res == 0, 'Todo 5 et 6 : La fonction describeFeatures() retourne des valeurs incorrectes !')
+AssertionError: False is not true : Todo 5 et 6 : La fonction describeFeatures() retourne des valeurs incorrectes !
+
+----------------------------------------------------------------------
+Ran 1 test in 6.483s
+
+FAILED (failures=1)
+
+
+Tests(test de la fonction matchFeatures() - version SSD) E
+======================================================================
+ERROR: test_todo7 (__main__.TestFeatures)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/lib64/python3.8/unittest/mock.py", line 1325, in patched
+    return func(*newargs, **newkeywargs)
+  File "/task/student/test_todo7.py", line 73, in test_todo7
+    matches_list = SSDFM.matchFeatures(loaded['e'], loaded['g'])
+  File "/task/student/features.py", line 522, in matchFeatures
+    raise Exception("TODO 7 : dans features.py non implémenté")
+Exception: TODO 7 : dans features.py non implémenté
+
+----------------------------------------------------------------------
+Ran 1 test in 0.033s
+
+FAILED (errors=1)
+
+
+Tests(test de la fonction matchFeatures() - version Ratio) E
+======================================================================
+ERROR: test_todo8 (__main__.TestFeatures)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/lib64/python3.8/unittest/mock.py", line 1325, in patched
+    return func(*newargs, **newkeywargs)
+  File "/task/student/test_todo8.py", line 73, in test_todo8
+    matches_list = RIOFM.matchFeatures(loaded['f'], loaded['h'])
+  File "/task/student/features.py", line 566, in matchFeatures
+    raise Exception("TODO 8 : dans features.py non implémenté")
+Exception: TODO 8 : dans features.py non implémenté
+
+----------------------------------------------------------------------
+Ran 1 test in 0.045s
+
+FAILED (errors=1)
+
+
+Tests(test de la fonction selectKeypointsANMS() - tache bonus Adaptative Non-maximal suppression) F
+======================================================================
+FAIL: test_todoANMS (__main__.TestANMS)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/lib64/python3.8/unittest/mock.py", line 1325, in patched
+    return func(*newargs, **newkeywargs)
+  File "/task/student/test_todob.py", line 147, in test_todoANMS
+    self.assertTrue(res == 0, 'La fonction selectKeypointANMS() ne retourne pas les points-clés corrects !')
+AssertionError: False is not true : La fonction selectKeypointANMS() ne retourne pas les points-clés corrects !
+
+----------------------------------------------------------------------
+Ran 1 test in 0.062s
+
+FAILED (failures=1)
