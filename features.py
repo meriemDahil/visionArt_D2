@@ -1,6 +1,7 @@
 import math
 
 import cv2
+from matplotlib import pyplot as plt
 import numpy as np
 import scipy
 from scipy import ndimage, spatial
@@ -136,7 +137,10 @@ class HarrisKeypointDetector(KeypointDetector):
             orientationImage -- tableau numpy contenant l'orientation du gradient 
                                 à chaque pixel en degrés.
         '''
-        
+        height, width = srcImage.shape[:2]
+
+        harrisImage = np.zeros(srcImage.shape[:2])
+        orientationImage = np.zeros(srcImage.shape[:2])
 
         # TODO 1 : Calculez l'intensité du coin Harris pour 'srcImage' à
         # chaque pixel et stockez-la dans 'harrisImage'. Calculez également
@@ -144,17 +148,14 @@ class HarrisKeypointDetector(KeypointDetector):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        height, width = srcImage.shape[:2]
-        harrisImage = np.zeros(srcImage.shape[:2])
-        orientationImage = np.zeros(srcImage.shape[:2])
+        
 
         # Sobel operators to compute gradients
         Ix = scipy.ndimage.sobel(srcImage, axis=1, mode='reflect')
         Iy = scipy.ndimage.sobel(srcImage, axis=0, mode='reflect')
+
         print("Ix:", Ix)
         print("Iy:", Iy)
-
-      
 
         # Gaussian filter to compute weighted sums
         sigma = 0.5
@@ -162,9 +163,12 @@ class HarrisKeypointDetector(KeypointDetector):
         Iy2 = scipy.ndimage.gaussian_filter(Iy**2, sigma)
         Ixy = scipy.ndimage.gaussian_filter(Ix * Iy, sigma)
 
+        print("Ix2:", Ix2)
+        print("Iy2:", Iy2)
+        print("Ixy:", Ixy)
+
         # Compute Harris matrix H and orientation
-        seuil = 0.1 
-        # Empirical constant
+        seuil = 0.1  # Empirical constant
         for y in range(height):
             for x in range(width):
                 H = np.array([[Ix2[y, x], Ixy[y, x]], [Ixy[y, x], Iy2[y, x]]])
@@ -176,9 +180,12 @@ class HarrisKeypointDetector(KeypointDetector):
         print("Orientation:", orientationImage[y, x])
         print("Harris Image:")
         print(harrisImage)
-        return harrisImage, orientationImage            
+       
+        
+        #raise Exception("TODO 1 : dans features.py non implémenté !")               
         # TODO-BLOC-FIN
 
+        return harrisImage, orientationImage
 
     def computeLocalMaxima(self, harrisImage):
         '''
@@ -198,22 +205,21 @@ class HarrisKeypointDetector(KeypointDetector):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        height, width = harrisImage.shape[:2]    
-        neighborhood_size = 7
+        for y in range(3, harrisImage.shape[0] - 3):
+          for x in range(3, harrisImage.shape[1] - 3):
+                neighborhood = harrisImage[y-3:y+4, x-3:x+4]
+                destImage[y, x] = np.all(neighborhood >= harrisImage[y, x])
 
-        half_size = neighborhood_size // 2
-
-        # Iterate over the image pixels
-        local_maxima = harrisImage == scipy.ndimage.filters.maximum_filter(harrisImage, footprint=np.ones((neighborhood_size, neighborhood_size)))
-
-        destImage = local_maxima & (harrisImage == local_maxima)
+        print("Harris Image in computeLocalMaxima:")
+        print(harrisImage)
+        print("Neighborhood:")
+        print(neighborhood)
+        print("Destination Image:")
+        print(destImage)
+        #raise Exception("TODO 2 : dans features.py non implémenté")                
         # TODO-BLOC-FIN
 
-        print("Local Maxima:")
-        print(local_maxima)
-
         return destImage
-       
 
     def detectKeypoints(self, image):
         '''
@@ -260,10 +266,13 @@ class HarrisKeypointDetector(KeypointDetector):
           # f.pt à la coordonnée (x, y), f.angle à l'orientation 
           # en degrés et f.response au score de Harris
           # TODO-BLOC-DEBUT
+          # N'oubliez pas d'enlever ou de commenter la ligne en dessous
+          # quand vous implémentez le code de ce TODO
           f.size = 10  # Set the size to 10
-          f.pt = (x, y)  # Set the position (x, y)
-          f.angle = orientationImage[y, x]  # Set the orientation in degrees
+          f.pt = (x, y)  
+          f.angle = orientationImage[y, x]  
           f.response = harrisImage[y, x]
+          #raise Exception("TODO 3 : dans features.py non implémenté")
           # TODO-BLOC-FIN
 
           features.append(f)
@@ -283,7 +292,7 @@ class ORBKeypointDetector(KeypointDetector):
             définissez le paramètre de voisinage 'size' sur 10.
         '''
         detector = cv2.ORB_create()
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         return detector.detect(image)
 
 
@@ -331,8 +340,8 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
             # TODO-BLOC-DEBUT            
             # N'oubliez pas d'enlever ou de commenter la ligne en dessous
             # quand vous implémentez le code de ce TODO
-            desc[i] = grayImage[y - 2:y + 3, x - 2:x + 3].flatten()
-            print(f"Window for keypoint {i}: {grayImage[y - 2:y + 3, x - 2:x + 3]}")
+            desc[i, :] = grayImage[y - 2:y + 3, x - 2:x + 3].flatten()
+            #raise Exception("TODO 4 : dans features.py non implémenté")
             # TODO-BLOC-FIN
 
         return desc
@@ -368,22 +377,29 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             # le point-clé vers les pixels appropriés dans l'image du 
             # descripteur de primitive 8x8.
             transMx = np.zeros((2, 3))
-            x, y = int(f.pt[0]), int(f.pt[1])
+            
 
             # TODO-BLOC-DEBUT
             # N'oubliez pas d'enlever ou de commenter la ligne en dessous
             # quand vous implémentez le code de ce TODO
-            transMx = cv2.getRotationMatrix2D((x, y), -f.angle, 1)
-            transMx[:, 2] += [windowSize / 2 - x, windowSize / 2 - y]
+            print("Keypoint Location:", f.pt)
+            print("Keypoint Angle:", f.angle)
+            angle_rad = np.radians(f.angle)
+            cos_theta = np.cos(angle_rad)
+            sin_theta = np.sin(angle_rad)
 
-            destImage = cv2.warpAffine(grayImage, transMx, (windowSize, windowSize), flags=cv2.INTER_AREA)
-            print(f"Transformed window for keypoint {i}: {destImage}")
+            transMx = np.array([[cos_theta, -sin_theta, f.pt[0]],
+                                [sin_theta, cos_theta, f.pt[1]]]) 
+            print("Transformation Matrix:")
+            print(transMx)
+            #raise Exception("TODO 5 : dans features.py non implémenté")
             # TODO-BLOC-FIN
 
             # Appel la fonction de distorsion affine pour effectuer le mappage
             # elle requiert une matrice 2x3
             destImage = cv2.warpAffine(grayImage, transMx,
                 (windowSize, windowSize), flags=cv2.INTER_AREA)
+            print(destImage)
 
             # TODO 6 : Normalisez le descripteur pour avoir une moyenne nulle
             # et une variance égale à 1. Si la variance avant normalisation 
@@ -393,20 +409,12 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             # TODO-BLOC-DEBUT
             # N'oubliez pas d'enlever ou de commenter la ligne en dessous
             # quand vous implémentez le code de ce TODO
-            desc_mean = destImage.mean()
-            desc_std = destImage.std()
-            epsilon = 1e-10
-            
-            if desc_std < epsilon:
-                # If the variance is negligible, set the descriptor to zero
-                destImage = np.zeros_like(destImage)
-            else:
-                # Normalize the descriptor
-                destImage = (destImage - desc_mean) / desc_std
+            normalized_desc = (destImage - np.mean(destImage)) / (np.std(destImage) + 1e-10)
+            desc[i, :] = normalized_desc.flatten()
+            print("After Normalization:")
+            print(normalized_desc)
 
-            # Store the descriptor in the array
-            desc[i] = destImage.flatten()
-            print(f"Normalized descriptor for keypoint {i}: {destImage}")
+            #raise Exception("TODO 6 : dans features.py non implémenté")
             # TODO-BLOC-FIN
 
         return desc
@@ -519,7 +527,20 @@ class SSDFeatureMatcher(FeatureMatcher):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        raise Exception("TODO 7 : dans features.py non implémenté")
+        for i in range(desc1.shape[0]):
+            # Calculer la distance SMC entre le descripteur de la première image (desc1[i])
+            # et tous les descripteurs de la deuxième image (desc2)
+            distances = np.sum((desc2 - desc1[i])**2, axis=1)
+
+            # Sélectionner l'index du descripteur de la deuxième image avec la distance minimale
+            best_match_index = np.argmin(distances)
+
+            # Créer un objet cv2.DMatch et l'ajouter à la liste des correspondances
+            match = cv2.DMatch()
+            match.queryIdx = i
+            match.trainIdx = best_match_index
+            match.distance = float(distances[best_match_index])
+            matches.append(match)
         # TODO-BLOC-FIN
 
         return matches
@@ -568,6 +589,7 @@ class RatioFeatureMatcher(FeatureMatcher):
 
         return matches
 
+
 class ORBFeatureMatcher(FeatureMatcher):
     def __init__(self):
         self.bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
@@ -576,8 +598,21 @@ class ORBFeatureMatcher(FeatureMatcher):
     def matchFeatures(self, desc1, desc2):
         return self.bf.match(desc1.astype(np.uint8), desc2.astype(np.uint8))
 
+image1=cv2.imread("./img1.png")
+image2=cv2.imread('./img2.png')
+harris_detector = DummyKeypointDetector()
+ssd_matcher = SSDFeatureMatcher()
+orb = cv2.ORB_create()
 
+keypoints1 = harris_detector.detectKeypoints(image1)
+keypoints2 = harris_detector.detectKeypoints(image2)
+orb = cv2.ORB_create()
+_, descriptors1 = orb.compute(image1, keypoints1)
+_, descriptors2 = orb.compute(image2, keypoints2)
 
+# 3. Utiliser la méthode matchFeatures pour obtenir les correspondances
+matches = ssd_matcher.matchFeatures(descriptors1, descriptors2)
+img_matches = cv2.drawMatches(image1, keypoints1, image2, keypoints2, matches, None)
 
-        
-
+plt.imshow(img_matches)
+plt.show()
