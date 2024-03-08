@@ -52,7 +52,30 @@ class KeypointDetector(object):
         # TODO Bonus : Implémentez ici la méthode de suppression non-maximale 
         # adaptative pour la sélection des points-clés les plus pertinents
         # TODO-BLOC-DEBUT
-        raise NotImplementedError("Tâche Bonus dans features.py non implémentée !")
+        scores = np.array([keypoint.response for keypoint in keypoints])
+
+        #to avoid loops
+        pt_pairs = np.array([(kp1.pt[0] - kp2.pt[0], kp1.pt[1] - kp2.pt[1]) for kp1 in keypoints for kp2 in keypoints])
+        distances = np.linalg.norm(pt_pairs, axis=1).reshape(len(keypoints), -1)
+
+        selected_keypoints = []
+
+        for i, keypoint in enumerate(keypoints):
+        
+            min_distance_index = np.argmin(distances[i])
+            min_distance = np.min(distances[i])
+
+            seuil = scores / scores[i] * min_distance
+            seuilSucc = np.all(seuil > 0.9)
+
+            if seuilSucc:
+                selected_keypoints.append(keypoint)
+
+            if len(selected_keypoints) >= maxNbrPoints:
+                break
+
+        features = selected_keypoints
+        #raise NotImplementedError("Tâche Bonus dans features.py non implémentée !")
         # TODO-BLOC-FIN
 
         return features
@@ -136,7 +159,10 @@ class HarrisKeypointDetector(KeypointDetector):
             orientationImage -- tableau numpy contenant l'orientation du gradient 
                                 à chaque pixel en degrés.
         '''
-        
+        height, width = srcImage.shape[:2]
+
+        harrisImage = np.zeros(srcImage.shape[:2])
+        orientationImage = np.zeros(srcImage.shape[:2])
 
         # TODO 1 : Calculez l'intensité du coin Harris pour 'srcImage' à
         # chaque pixel et stockez-la dans 'harrisImage'. Calculez également
@@ -144,41 +170,32 @@ class HarrisKeypointDetector(KeypointDetector):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        height, width = srcImage.shape[:2]
-        harrisImage = np.zeros(srcImage.shape[:2])
-        orientationImage = np.zeros(srcImage.shape[:2])
-
-        # Sobel operators to compute gradients
         Ix = scipy.ndimage.sobel(srcImage, axis=1, mode='reflect')
         Iy = scipy.ndimage.sobel(srcImage, axis=0, mode='reflect')
-        print("Ix:", Ix)
-        print("Iy:", Iy)
 
-      
+        gaussian_weights = scipy.ndimage.gaussian_filter(np.ones_like(srcImage), sigma=0.5)
 
-        # Gaussian filter to compute weighted sums
-        sigma = 0.5
-        Ix2 = scipy.ndimage.gaussian_filter(Ix**2, sigma)
-        Iy2 = scipy.ndimage.gaussian_filter(Iy**2, sigma)
-        Ixy = scipy.ndimage.gaussian_filter(Ix * Iy, sigma)
+        Ix2 = Ix**2
+        Iy2 = Iy**2
+        Ixy = Ix * Iy
 
-        # Compute Harris matrix H and orientation
-        seuil = 0.1 
-        # Empirical constant
-        for y in range(height):
-            for x in range(width):
-                H = np.array([[Ix2[y, x], Ixy[y, x]], [Ixy[y, x], Iy2[y, x]]])
-                det_H = np.linalg.det(H)
-                trace_H = np.trace(H)
-                harrisImage[y, x] = det_H - seuil * (trace_H**2)
-                orientationImage[y, x] = np.arctan2(Iy[y, x], Ix[y, x]) * 180 / np.pi
+        Ix2_weighted = scipy.ndimage.gaussian_filter(Ix2, sigma=0.5, mode='reflect')
+        Iy2_weighted = scipy.ndimage.gaussian_filter(Iy2, sigma=0.5, mode='reflect')
+        Ixy_weighted = scipy.ndimage.gaussian_filter(Ixy, sigma=0.5, mode='reflect')
 
-        print("Orientation:", orientationImage[y, x])
-        print("Harris Image:")
-        print(harrisImage)
-        return harrisImage, orientationImage            
+        det_H = Ix2_weighted * Iy2_weighted - Ixy_weighted**2
+        trace_H = Ix2_weighted + Iy2_weighted
+
+        seuil = 0.1
+        harrisImage = det_H - seuil * (trace_H**2)
+
+        orientationImage = np.arctan2(Iy, Ix) * (180.0 / np.pi)
+        orientationImage[orientationImage < 0] += 180.0
+
+        #raise Exception("TODO 1 : dans features.py non implémenté !")               
         # TODO-BLOC-FIN
 
+        return harrisImage, orientationImage
 
     def computeLocalMaxima(self, harrisImage):
         '''
@@ -198,22 +215,13 @@ class HarrisKeypointDetector(KeypointDetector):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        height, width = harrisImage.shape[:2]    
-        neighborhood_size = 7
-
-        half_size = neighborhood_size // 2
-
-        # Iterate over the image pixels
-        local_maxima = harrisImage == scipy.ndimage.filters.maximum_filter(harrisImage, footprint=np.ones((neighborhood_size, neighborhood_size)))
-
-        destImage = local_maxima & (harrisImage == local_maxima)
+        window_size = 7
+        local_maxima = scipy.ndimage.maximum_filter(harrisImage, size=(window_size, window_size))
+        destImage = np.logical_and(harrisImage == local_maxima, harrisImage > 0)
+        #raise Exception("TODO 2 : dans features.py non implémenté")                
         # TODO-BLOC-FIN
 
-        print("Local Maxima:")
-        print(local_maxima)
-
         return destImage
-       
 
     def detectKeypoints(self, image):
         '''
@@ -260,10 +268,13 @@ class HarrisKeypointDetector(KeypointDetector):
           # f.pt à la coordonnée (x, y), f.angle à l'orientation 
           # en degrés et f.response au score de Harris
           # TODO-BLOC-DEBUT
+          # N'oubliez pas d'enlever ou de commenter la ligne en dessous
+          # quand vous implémentez le code de ce TODO
           f.size = 10  # Set the size to 10
-          f.pt = (x, y)  # Set the position (x, y)
-          f.angle = orientationImage[y, x]  # Set the orientation in degrees
+          f.pt = (x, y)  
+          f.angle = orientationImage[y, x]  
           f.response = harrisImage[y, x]
+          #raise Exception("TODO 3 : dans features.py non implémenté")
           # TODO-BLOC-FIN
 
           features.append(f)
@@ -283,7 +294,7 @@ class ORBKeypointDetector(KeypointDetector):
             définissez le paramètre de voisinage 'size' sur 10.
         '''
         detector = cv2.ORB_create()
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         return detector.detect(image)
 
 
@@ -331,8 +342,8 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
             # TODO-BLOC-DEBUT            
             # N'oubliez pas d'enlever ou de commenter la ligne en dessous
             # quand vous implémentez le code de ce TODO
-            desc[i] = grayImage[y - 2:y + 3, x - 2:x + 3].flatten()
-            print(f"Window for keypoint {i}: {grayImage[y - 2:y + 3, x - 2:x + 3]}")
+            desc[i, :] = grayImage[y - 2:y + 3, x - 2:x + 3].flatten()
+            #raise Exception("TODO 4 : dans features.py non implémenté")
             # TODO-BLOC-FIN
 
         return desc
@@ -368,16 +379,14 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             # le point-clé vers les pixels appropriés dans l'image du 
             # descripteur de primitive 8x8.
             transMx = np.zeros((2, 3))
-            x, y = int(f.pt[0]), int(f.pt[1])
 
             # TODO-BLOC-DEBUT
             # N'oubliez pas d'enlever ou de commenter la ligne en dessous
             # quand vous implémentez le code de ce TODO
-            transMx = cv2.getRotationMatrix2D((x, y), -f.angle, 1)
-            transMx[:, 2] += [windowSize / 2 - x, windowSize / 2 - y]
-
-            destImage = cv2.warpAffine(grayImage, transMx, (windowSize, windowSize), flags=cv2.INTER_AREA)
-            print(f"Transformed window for keypoint {i}: {destImage}")
+            transMx[:, :2] = f.size * np.array([[np.cos(np.radians(-f.angle)), -np.sin(np.radians(-f.angle))],
+                                [np.sin(np.radians(-f.angle)), np.cos(np.radians(-f.angle))]])
+            transMx[:, 2] = f.pt
+            #raise Exception("TODO 5 : dans features.py non implémenté")
             # TODO-BLOC-FIN
 
             # Appel la fonction de distorsion affine pour effectuer le mappage
@@ -393,20 +402,15 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             # TODO-BLOC-DEBUT
             # N'oubliez pas d'enlever ou de commenter la ligne en dessous
             # quand vous implémentez le code de ce TODO
-            desc_mean = destImage.mean()
-            desc_std = destImage.std()
-            epsilon = 1e-10
-            
-            if desc_std < epsilon:
-                # If the variance is negligible, set the descriptor to zero
-                destImage = np.zeros_like(destImage)
-            else:
-                # Normalize the descriptor
-                destImage = (destImage - desc_mean) / desc_std
+            destImage = destImage.flatten()
+            mean_desc = np.mean(destImage)
+            std_desc = np.std(destImage)
 
-            # Store the descriptor in the array
-            desc[i] = destImage.flatten()
-            print(f"Normalized descriptor for keypoint {i}: {destImage}")
+            if std_desc < 1e-10:
+                desc[i, :] = 0
+            else:
+                desc[i, :] = (destImage - mean_desc) / std_desc
+            #raise Exception("TODO 6 : dans features.py non implémenté")
             # TODO-BLOC-FIN
 
         return desc
@@ -519,7 +523,9 @@ class SSDFeatureMatcher(FeatureMatcher):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        raise Exception("TODO 7 : dans features.py non implémenté")
+        distances = scipy.spatial.distance.cdist(desc1, desc2, 'sqeuclidean')
+        matches = [cv2.DMatch(queryIdx=i, trainIdx=np.argmin(distances[i]), distance=np.min(distances[i])) for i in range(len(distances))]
+        #raise Exception("TODO 7 : dans features.py non implémenté")
         # TODO-BLOC-FIN
 
         return matches
@@ -563,10 +569,19 @@ class RatioFeatureMatcher(FeatureMatcher):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        raise Exception("TODO 8 : dans features.py non implémenté")
+        distances = scipy.spatial.distance.cdist(desc1, desc2, 'sqeuclidean')
+        sorted_indices = np.argsort(distances, axis=1)
+        att = distances[np.arange(len(desc1)), sorted_indices[:, 0]] / distances[np.arange(len(desc1)), sorted_indices[:, 1]]
+
+        matches = [cv2.DMatch(queryIdx=i, trainIdx=sorted_indices[i, 0], distance=att[i]) for i in range(len(desc1))]
+
+        seuil = 0.7
+        matches = [match for match in matches if match.distance < seuil]
+        #raise Exception("TODO 8 : dans features.py non implémenté")
         # TODO-BLOC-END
 
         return matches
+
 
 class ORBFeatureMatcher(FeatureMatcher):
     def __init__(self):
@@ -575,9 +590,3 @@ class ORBFeatureMatcher(FeatureMatcher):
 
     def matchFeatures(self, desc1, desc2):
         return self.bf.match(desc1.astype(np.uint8), desc2.astype(np.uint8))
-
-
-
-
-        
-
