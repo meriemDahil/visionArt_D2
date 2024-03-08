@@ -1,7 +1,6 @@
 import math
 
 import cv2
-from matplotlib import pyplot as plt
 import numpy as np
 import scipy
 from scipy import ndimage, spatial
@@ -53,7 +52,30 @@ class KeypointDetector(object):
         # TODO Bonus : Implémentez ici la méthode de suppression non-maximale 
         # adaptative pour la sélection des points-clés les plus pertinents
         # TODO-BLOC-DEBUT
-        raise NotImplementedError("Tâche Bonus dans features.py non implémentée !")
+        scores = np.array([keypoint.response for keypoint in keypoints])
+
+        #to avoid loops
+        pt_pairs = np.array([(kp1.pt[0] - kp2.pt[0], kp1.pt[1] - kp2.pt[1]) for kp1 in keypoints for kp2 in keypoints])
+        distances = np.linalg.norm(pt_pairs, axis=1).reshape(len(keypoints), -1)
+
+        selected_keypoints = []
+
+        for i, keypoint in enumerate(keypoints):
+        
+            min_distance_index = np.argmin(distances[i])
+            min_distance = np.min(distances[i])
+
+            seuil = scores / scores[i] * min_distance
+            seuilSucc = np.all(seuil > 0.9)
+
+            if seuilSucc:
+                selected_keypoints.append(keypoint)
+
+            if len(selected_keypoints) >= maxNbrPoints:
+                break
+
+        features = selected_keypoints
+        #raise NotImplementedError("Tâche Bonus dans features.py non implémentée !")
         # TODO-BLOC-FIN
 
         return features
@@ -148,40 +170,28 @@ class HarrisKeypointDetector(KeypointDetector):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        
-
-        # Sobel operators to compute gradients
         Ix = scipy.ndimage.sobel(srcImage, axis=1, mode='reflect')
         Iy = scipy.ndimage.sobel(srcImage, axis=0, mode='reflect')
 
-        print("Ix:", Ix)
-        print("Iy:", Iy)
+        gaussian_weights = scipy.ndimage.gaussian_filter(np.ones_like(srcImage), sigma=0.5)
 
-        # Gaussian filter to compute weighted sums
-        sigma = 0.5
-        Ix2 = scipy.ndimage.gaussian_filter(Ix**2, sigma)
-        Iy2 = scipy.ndimage.gaussian_filter(Iy**2, sigma)
-        Ixy = scipy.ndimage.gaussian_filter(Ix * Iy, sigma)
+        Ix2 = Ix**2
+        Iy2 = Iy**2
+        Ixy = Ix * Iy
 
-        print("Ix2:", Ix2)
-        print("Iy2:", Iy2)
-        print("Ixy:", Ixy)
+        Ix2_weighted = scipy.ndimage.gaussian_filter(Ix2, sigma=0.5, mode='reflect')
+        Iy2_weighted = scipy.ndimage.gaussian_filter(Iy2, sigma=0.5, mode='reflect')
+        Ixy_weighted = scipy.ndimage.gaussian_filter(Ixy, sigma=0.5, mode='reflect')
 
-        # Compute Harris matrix H and orientation
-        seuil = 0.1  # Empirical constant
-        for y in range(height):
-            for x in range(width):
-                H = np.array([[Ix2[y, x], Ixy[y, x]], [Ixy[y, x], Iy2[y, x]]])
-                det_H = np.linalg.det(H)
-                trace_H = np.trace(H)
-                harrisImage[y, x] = det_H - seuil * (trace_H**2)
-                orientationImage[y, x] = np.arctan2(Iy[y, x], Ix[y, x]) * 180 / np.pi
+        det_H = Ix2_weighted * Iy2_weighted - Ixy_weighted**2
+        trace_H = Ix2_weighted + Iy2_weighted
 
-        print("Orientation:", orientationImage[y, x])
-        print("Harris Image:")
-        print(harrisImage)
-       
-        
+        seuil = 0.1
+        harrisImage = det_H - seuil * (trace_H**2)
+
+        orientationImage = np.arctan2(Iy, Ix) * (180.0 / np.pi)
+        orientationImage[orientationImage < 0] += 180.0
+
         #raise Exception("TODO 1 : dans features.py non implémenté !")               
         # TODO-BLOC-FIN
 
@@ -205,17 +215,9 @@ class HarrisKeypointDetector(KeypointDetector):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        for y in range(3, harrisImage.shape[0] - 3):
-          for x in range(3, harrisImage.shape[1] - 3):
-                neighborhood = harrisImage[y-3:y+4, x-3:x+4]
-                destImage[y, x] = np.all(neighborhood >= harrisImage[y, x])
-
-        print("Harris Image in computeLocalMaxima:")
-        print(harrisImage)
-        print("Neighborhood:")
-        print(neighborhood)
-        print("Destination Image:")
-        print(destImage)
+        window_size = 7
+        local_maxima = scipy.ndimage.maximum_filter(harrisImage, size=(window_size, window_size))
+        destImage = np.logical_and(harrisImage == local_maxima, harrisImage > 0)
         #raise Exception("TODO 2 : dans features.py non implémenté")                
         # TODO-BLOC-FIN
 
@@ -377,21 +379,13 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             # le point-clé vers les pixels appropriés dans l'image du 
             # descripteur de primitive 8x8.
             transMx = np.zeros((2, 3))
-            
 
             # TODO-BLOC-DEBUT
             # N'oubliez pas d'enlever ou de commenter la ligne en dessous
             # quand vous implémentez le code de ce TODO
-            print("Keypoint Location:", f.pt)
-            print("Keypoint Angle:", f.angle)
-            angle_rad = np.radians(f.angle)
-            cos_theta = np.cos(angle_rad)
-            sin_theta = np.sin(angle_rad)
-
-            transMx = np.array([[cos_theta, -sin_theta, f.pt[0]],
-                                [sin_theta, cos_theta, f.pt[1]]]) 
-            print("Transformation Matrix:")
-            print(transMx)
+            transMx[:, :2] = f.size * np.array([[np.cos(np.radians(-f.angle)), -np.sin(np.radians(-f.angle))],
+                                [np.sin(np.radians(-f.angle)), np.cos(np.radians(-f.angle))]])
+            transMx[:, 2] = f.pt
             #raise Exception("TODO 5 : dans features.py non implémenté")
             # TODO-BLOC-FIN
 
@@ -399,7 +393,6 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             # elle requiert une matrice 2x3
             destImage = cv2.warpAffine(grayImage, transMx,
                 (windowSize, windowSize), flags=cv2.INTER_AREA)
-            print(destImage)
 
             # TODO 6 : Normalisez le descripteur pour avoir une moyenne nulle
             # et une variance égale à 1. Si la variance avant normalisation 
@@ -409,11 +402,14 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             # TODO-BLOC-DEBUT
             # N'oubliez pas d'enlever ou de commenter la ligne en dessous
             # quand vous implémentez le code de ce TODO
-            normalized_desc = (destImage - np.mean(destImage)) / (np.std(destImage) + 1e-10)
-            desc[i, :] = normalized_desc.flatten()
-            print("After Normalization:")
-            print(normalized_desc)
+            destImage = destImage.flatten()
+            mean_desc = np.mean(destImage)
+            std_desc = np.std(destImage)
 
+            if std_desc < 1e-10:
+                desc[i, :] = 0
+            else:
+                desc[i, :] = (destImage - mean_desc) / std_desc
             #raise Exception("TODO 6 : dans features.py non implémenté")
             # TODO-BLOC-FIN
 
@@ -527,20 +523,9 @@ class SSDFeatureMatcher(FeatureMatcher):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        for i in range(desc1.shape[0]):
-            # Calculer la distance SMC entre le descripteur de la première image (desc1[i])
-            # et tous les descripteurs de la deuxième image (desc2)
-            distances = np.sum((desc2 - desc1[i])**2, axis=1)
-
-            # Sélectionner l'index du descripteur de la deuxième image avec la distance minimale
-            best_match_index = np.argmin(distances)
-
-            # Créer un objet cv2.DMatch et l'ajouter à la liste des correspondances
-            match = cv2.DMatch()
-            match.queryIdx = i
-            match.trainIdx = best_match_index
-            match.distance = float(distances[best_match_index])
-            matches.append(match)
+        distances = scipy.spatial.distance.cdist(desc1, desc2, 'sqeuclidean')
+        matches = [cv2.DMatch(queryIdx=i, trainIdx=np.argmin(distances[i]), distance=np.min(distances[i])) for i in range(len(distances))]
+        #raise Exception("TODO 7 : dans features.py non implémenté")
         # TODO-BLOC-FIN
 
         return matches
@@ -584,7 +569,15 @@ class RatioFeatureMatcher(FeatureMatcher):
         # TODO-BLOC-DEBUT
         # N'oubliez pas d'enlever ou de commenter la ligne en dessous
         # quand vous implémentez le code de ce TODO
-        raise Exception("TODO 8 : dans features.py non implémenté")
+        distances = scipy.spatial.distance.cdist(desc1, desc2, 'sqeuclidean')
+        sorted_indices = np.argsort(distances, axis=1)
+        att = distances[np.arange(len(desc1)), sorted_indices[:, 0]] / distances[np.arange(len(desc1)), sorted_indices[:, 1]]
+
+        matches = [cv2.DMatch(queryIdx=i, trainIdx=sorted_indices[i, 0], distance=att[i]) for i in range(len(desc1))]
+
+        seuil = 0.7
+        matches = [match for match in matches if match.distance < seuil]
+        #raise Exception("TODO 8 : dans features.py non implémenté")
         # TODO-BLOC-END
 
         return matches
@@ -597,22 +590,3 @@ class ORBFeatureMatcher(FeatureMatcher):
 
     def matchFeatures(self, desc1, desc2):
         return self.bf.match(desc1.astype(np.uint8), desc2.astype(np.uint8))
-
-image1=cv2.imread("./img1.png")
-image2=cv2.imread('./img2.png')
-harris_detector = DummyKeypointDetector()
-ssd_matcher = SSDFeatureMatcher()
-orb = cv2.ORB_create()
-
-keypoints1 = harris_detector.detectKeypoints(image1)
-keypoints2 = harris_detector.detectKeypoints(image2)
-orb = cv2.ORB_create()
-_, descriptors1 = orb.compute(image1, keypoints1)
-_, descriptors2 = orb.compute(image2, keypoints2)
-
-# 3. Utiliser la méthode matchFeatures pour obtenir les correspondances
-matches = ssd_matcher.matchFeatures(descriptors1, descriptors2)
-img_matches = cv2.drawMatches(image1, keypoints1, image2, keypoints2, matches, None)
-
-plt.imshow(img_matches)
-plt.show()
