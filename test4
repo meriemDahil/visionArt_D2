@@ -230,6 +230,7 @@ def triangulate(P1, pts1, P2, pts2):
         X /= X[3] 
         
         pts3d[i] = X[:3]
+
     # TODO-BLOC-FIN
     
     return pts3d
